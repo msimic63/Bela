@@ -121,7 +121,7 @@
   .header-title-row{display:flex;align-items:center;justify-content:center;gap:14px;}
   .header-wins-row{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;}
   .win-card{background:linear-gradient(145deg,var(--g2),var(--g3));border:1.5px solid rgba(100,160,220,.5);border-radius:14px;padding:6px 14px;text-align:center;min-width:60px;flex-shrink:0;}
-  .win-card-val{font-family:'Syne',sans-serif;font-size:38px;font-weight:900;color:#e8c56a;line-height:1;}
+  .win-card-val{font-family:'Syne',sans-serif;font-size:38px;font-weight:900;color:#f5c518;line-height:1;}
 </style>
 </head>
 <body>
@@ -393,6 +393,10 @@ function addRound() {
     if (isNaN(ptsA) || isNaN(ptsB)) { showToast("⚠️ Upiši bodove za oba tima!", 3000); return; }
     if (ptsA + ptsB !== igra) { showToast(`⚠️ Bodovi moraju biti ${igra} ukupno! (${ptsA}+${ptsB}=${ptsA+ptsB})`, 3500); return; }
     if (ptsA < 0 || ptsB < 0) { showToast("⚠️ Bodovi ne mogu biti negativni!", 3000); return; }
+    if (ptsA === 1 || ptsB === 1) { showToast("⚠️ Nemoguć broj! Minimalni bodovi su 2 (ili 0 za štiglje)."); return; }
+    // If one team has 0 (štiglje), other must have at least 252
+    if (ptsA === 0 && ptsB < 252) { showToast("⚠️ Ako " + state.nameA + " ima štiglje, " + state.nameB + " mora imati najmanje 252 boda!"); return; }
+    if (ptsB === 0 && ptsA < 252) { showToast("⚠️ Ako " + state.nameB + " ima štiglje, " + state.nameA + " mora imati najmanje 252 boda!"); return; }
     addA = ptsA; addB = ptsB;
   }
 
@@ -605,7 +609,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 // ── Init ───────────────────────────────────
 openDB().then(() => dbLoad()).then(saved => {
   if (saved) {
-    state = { ...state, ...saved, winsA: 0, winsB: 0, pad: { mi: false, vi: false } };
+    state = { ...state, ...saved, winsA: 0, winsB: 0, rounds: [], totalA: 0, totalB: 0, pad: { mi: false, vi: false } };
   }
   render();
 }).catch(() => render());

@@ -2,7 +2,7 @@
   "name": "Bela – Brojanje",
   "short_name": "Bela",
   "description": "Brojanje bodova za igru Bela",
-  "start_url": "/",
+  "start_url": "/Bela/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#071640",

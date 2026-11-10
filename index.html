@@ -250,7 +250,7 @@
 
 <script>
 // ── Valid igra values (whitelist) ──────────
-const VALID_IGRA = [152,162,172,182,192,202,212,222,232,242,252,262,272,282,292,302,312,322,332,342,352,362,372,382,392,402,412,422,432,452,462,472,482,502,512,522,532,552,562,572,582,602,612,622,632,652,662,672,682,702,712,722,732,752,762,772,782];
+const VALID_IGRA = [162,182,202,212,222,232,242,252,262,272,282,292,302,312,322,332,342,352,362,372,382,392,402,412,422,432,442,452,462,472,482,492,502,512,522,532,542,552,562,572,582,592,602,612,622,632,642,652,662,672,682,692,702,712,722,732,742,752,762,772,802,822];
 
 // ── IndexedDB ──────────────────────────────
 const DB_NAME = "bela_db2", DB_STORE = "state", DB_KEY = "main";
@@ -318,7 +318,7 @@ function onIgraChange(el) {
   const v = parseInt(el.value) || 0;
   if (!v || !VALID_IGRA.includes(v)) {
     el.classList.add("invalid");
-    const msg = v ? "Igra ne može imati " + v + " bod" + (v === 1 ? "" : "ova") + "! Valjane vrijednosti: 152, 162, 172, 182..." : "Upiši vrijednost igre!";
+    const msg = v ? "Igra ne može imati " + v + " bod" + (v === 1 ? "" : "ova") + "! Valjane vrijednosti: 162, 182, 202..." : "Upiši vrijednost igre!";
     showToast("⚠️ " + msg);
     el.value = "";
     setTimeout(() => el.focus(), 50);

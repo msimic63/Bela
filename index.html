@@ -68,9 +68,10 @@
   .entry-group input.invalid { border-color: var(--red); }
 
   /* PAD buttons */
-  .pad-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .pad-btn { flex: 1; padding: 9px 4px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--dim); font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; transition: all 0.15s; }
+  .pad-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .pad-btn { min-width: 0; padding: 9px 2px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--dim); font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px; transition: all 0.15s; white-space: nowrap; }
   .pad-btn.active { border-color: var(--red); background: rgba(231,76,60,0.2); color: #ff6b6b; }
+  .pad-btn.stig.active { border-color: #ff9500; background: rgba(255,149,0,0.18); color: #ffb347; }
 
   /* Action buttons */
   .btn-primary { width: 100%; padding: 12px; border-radius: 14px; border: none; background: linear-gradient(135deg, #1565c0, #0d47a1); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 14px rgba(21,101,192,0.4); transition: transform 0.1s, opacity 0.1s; margin-bottom: 6px; }
@@ -195,8 +196,10 @@
 
     <!-- PAD -->
     <div class="pad-row">
-      <button class="pad-btn" id="pad-mi" onclick="togglePad('mi')">PAD MI</button>
-      <button class="pad-btn" id="pad-vi" onclick="togglePad('vi')">PAD VI</button>
+      <button class="pad-btn" id="pad-mi" onclick="togglePad('mi')">PAD</button>
+      <button class="pad-btn stig" id="stig-mi" onclick="toggleStig('mi')">ŠTIGLJE</button>
+      <button class="pad-btn" id="pad-vi" onclick="togglePad('vi')">PAD</button>
+      <button class="pad-btn stig" id="stig-vi" onclick="toggleStig('vi')">ŠTIGLJE</button>
     </div>
 
     <button class="btn-primary" onclick="addRound()">POTVRDI</button>
@@ -305,6 +308,7 @@ function adjIgra(dir) {
   } else {
     next = VALID_IGRA[Math.max(0, Math.min(VALID_IGRA.length - 1, idx + dir))];
   }
+  if (next && stigOn() && next < STIG_MIN) { showToast("⚠️ Kod štiglje igra je najmanje " + STIG_MIN + "!"); return; }
   if (next) {
     document.getElementById("igra-input").value = next;
     document.getElementById("igra-input").classList.remove("invalid");
@@ -322,6 +326,10 @@ function onIgraChange(el) {
     showToast("⚠️ " + msg);
     el.value = "";
     setTimeout(() => el.focus(), 50);
+  } else if (stigOn() && v < STIG_MIN) {
+    showToast("⚠️ Kod štiglje igra je najmanje " + STIG_MIN + "!");
+    el.value = STIG_MIN;
+    el.classList.remove("invalid");
   } else {
     el.classList.remove("invalid");
     recalcOtherPts();
@@ -376,15 +384,41 @@ function onPtsInput(team) {
 }
 
 // ── PAD ────────────────────────────────────
+const STIG_MIN = 252;
+let stig = { mi: false, vi: false };
+function stigOn() { return stig.mi || stig.vi; }
+function syncSel() {
+  ["mi", "vi"].forEach(t => {
+    document.getElementById("pad-" + t).classList.toggle("active", state.pad[t]);
+    document.getElementById("stig-" + t).classList.toggle("active", stig[t]);
+  });
+}
+function clearSel() {
+  state.pad = { mi: false, vi: false };
+  stig = { mi: false, vi: false };
+  syncSel();
+}
+// Odabir je uvijek samo jedan od četiri (PAD/ŠTIGLJE × Mi/Vi)
 function togglePad(team) {
-  state.pad[team] = !state.pad[team];
-  if (state.pad[team]) {
-    // deactivate other
-    const other = team === "mi" ? "vi" : "mi";
-    state.pad[other] = false;
-    document.getElementById("pad-" + other).classList.remove("active");
+  const on = !state.pad[team];
+  clearSel();
+  state.pad[team] = on;
+  syncSel();
+}
+function toggleStig(team) {
+  const on = !stig[team];
+  clearSel();
+  stig[team] = on;
+  if (on) {
+    const inp = document.getElementById("igra-input");
+    if (getIgra() < STIG_MIN) {
+      inp.value = STIG_MIN;
+      showToast("🟠 Štiglje – igra postavljena na " + STIG_MIN);
+    }
+    inp.classList.remove("invalid");
+    ["pts-mi", "pts-vi"].forEach(id => { const e = document.getElementById(id); e.value = ""; e.classList.remove("invalid"); });
   }
-  document.getElementById("pad-" + team).classList.toggle("active", state.pad[team]);
+  syncSel();
 }
 
 // ── Add round ──────────────────────────────
@@ -423,6 +457,10 @@ function addRound() {
   } else if (padVi) {
     // Vi pad — sve ide Mi
     addA = igra; addB = 0;
+  } else if (stigOn()) {
+    // Štiglje — ekipa bez štiha dobiva 0, sve ide drugoj; igra najmanje 252
+    if (igra < STIG_MIN) { showToast("⚠️ Kod štiglje igra je najmanje " + STIG_MIN + "!", 3000); return; }
+    addA = stig.mi ? 0 : igra; addB = stig.mi ? igra : 0;
   } else {
     const ptsA = parseInt(document.getElementById("pts-mi").value);
     const ptsB = parseInt(document.getElementById("pts-vi").value);
@@ -447,9 +485,7 @@ function addRound() {
   document.getElementById("pts-vi").classList.remove("invalid");
   document.getElementById("igra-input").value = 162;
   document.getElementById("igra-input").classList.remove("invalid");
-  state.pad = { mi: false, vi: false };
-  document.getElementById("pad-mi").classList.remove("active");
-  document.getElementById("pad-vi").classList.remove("active");
+  clearSel();
 
   dbSave(state);
   render();
@@ -500,8 +536,10 @@ function render() {
   document.getElementById("lbl-vi").textContent = nB + " bodovi";
   document.getElementById("hdr-mi").textContent = nA;
   document.getElementById("hdr-vi").textContent = nB;
-  document.getElementById("pad-mi").textContent = "PAD " + nA.toUpperCase();
-  document.getElementById("pad-vi").textContent = "PAD " + nB.toUpperCase();
+  document.getElementById("pad-mi").title = "Pad – " + nA;
+  document.getElementById("pad-vi").title = "Pad – " + nB;
+  document.getElementById("stig-mi").title = "Štiglje – " + nA;
+  document.getElementById("stig-vi").title = "Štiglje – " + nB;
 
   // History
   const list = document.getElementById("history-list");
@@ -539,7 +577,7 @@ function checkWinner() {
 function newGame() {
   // Keep wins, reset only current game
   state = { ...state, totalA: 0, totalB: 0, rounds: [], pad: { mi: false, vi: false } };
-  document.getElementById("winner-overlay").classList.remove("show");
+  document.getElementById("winner-overlay").classList.remove("show"); clearSel();
   document.getElementById("igra-input").value = 162;
   document.getElementById("pts-mi").value = "";
   document.getElementById("pts-vi").value = "";
@@ -578,7 +616,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && dialogOpen
 async function confirmReset() {
   if (await askConfirm({ icon: "↺", title: "Resetirati sve?", text: "Briše se trenutna igra i broj pobjeda.", ok: "Resetiraj", cancel: "Odustani", showScore: state.rounds.length > 0 })) {
     state = { nameA: state.nameA, nameB: state.nameB, totalA: 0, totalB: 0, winsA: 0, winsB: 0, rounds: [], pad: { mi: false, vi: false } };
-    document.getElementById("winner-overlay").classList.remove("show");
+    document.getElementById("winner-overlay").classList.remove("show"); clearSel();
     document.getElementById("igra-input").value = 162;
     document.getElementById("pts-mi").value = "";
     document.getElementById("pts-vi").value = "";
@@ -607,7 +645,8 @@ function processVoice(transcript) {
   let mIgra = t.match(/^igra\s+(\d+)$/);
   if (mIgra) {
     const v = parseInt(mIgra[1]);
-    if (VALID_IGRA.includes(v)) { document.getElementById("igra-input").value = v; showToast("🎮 Igra: " + v); }
+    if (stigOn() && v < STIG_MIN) showToast("⚠️ Kod štiglje igra je najmanje " + STIG_MIN + "!", 3000);
+    else if (VALID_IGRA.includes(v)) { document.getElementById("igra-input").value = v; showToast("🎮 Igra: " + v); }
     else showToast("⚠️ " + v + " nije valjana igra", 3000);
     return;
   }
@@ -618,6 +657,14 @@ function processVoice(transcript) {
     const team = mPad[1];
     if (isA(team)) { togglePad("mi"); showToast("🔴 PAD " + state.nameA + (state.pad.mi ? " aktiviran" : " deaktiviran")); return; }
     if (isB(team)) { togglePad("vi"); showToast("🔴 PAD " + state.nameB + (state.pad.vi ? " aktiviran" : " deaktiviran")); return; }
+  }
+
+  // "štiglje mi" / "štiglje vi"
+  let mStig = t.match(/^štiglj[eaio]\s+([\wčćžšđ]+)$/);
+  if (mStig) {
+    const team = mStig[1];
+    if (isA(team)) { toggleStig("mi"); showToast("🟠 Štiglje " + state.nameA + (stig.mi ? " aktivirano" : " deaktivirano")); return; }
+    if (isB(team)) { toggleStig("vi"); showToast("🟠 Štiglje " + state.nameB + (stig.vi ? " aktivirano" : " deaktivirano")); return; }
   }
 
   // "mi 90" / "mi bodovi 90" / "bodovi mi 90"
